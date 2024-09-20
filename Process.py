@@ -23,25 +23,26 @@ from OneToOneMessage import *
 
 class Process(Thread):
 
-    nb_process_created = 0
+    # nb_process_created = 0
 
     def __init__(self, name, nb_process):
         Thread.__init__(self)
 
         self.nb_process = nb_process
-        self.my_id = Process.nb_process_created
-        Process.nb_process_created += 1
+
+        self.com = Com(nb_process = self.nb_process)
+
         self.my_process_name = name
         self.setName("MainThread-" + name)
 
         self.alive = True
+
         self.start()
-
-        #####################################
-
-        self.com = Com(my_id = self.my_id, nb_process = self.nb_process)
-
+        
     def run(self):
+
+        self.com.numbering()
+
         loop = 0
         while self.alive:
             print(self.getName() + " Loop: " + str(loop))

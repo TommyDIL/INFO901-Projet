@@ -4,6 +4,8 @@ import threading
 
 from time import sleep
 
+import bisect
+
 from pyeventbus3.pyeventbus3 import *
 
 from BroadcastSyncMessage import *
@@ -25,8 +27,8 @@ from Token import *
 import random as rd
 
 class Com:
-    def __init__(self, my_id, nb_process: int) -> None:
-        self.my_id = my_id
+    def __init__(self, nb_process: int) -> None:
+        self.my_id = -1 # = my_id
         self.nb_process = nb_process
 
         self.lamport = Lamport()
@@ -58,6 +60,42 @@ class Com:
 
         if self.my_id == self.nb_process - 1:
             self.init_token()
+
+
+    @subscribe(threadMode=Mode.PARALLEL, onEvent=NumberingMessage)
+    def on_numbering(self, message) -> None:
+        """
+        Lorsqu'on reçoit un message de numérotation, on l'ajoute à sa place dans la liste des valeurs.
+        """
+
+        bisect.insort(self.numbering_list, message.value)
+
+
+    def numbering(self) -> None:
+        """
+        Procède à la numérotation automatique des processus.
+        """
+
+        value = rd.randint(0, self.numbering_m_value)
+
+        sleep(1)
+
+        PyBus.Instance().post(NumberingMessage(value))
+
+        timeout = 0
+        while len(self.numbering_list) < self.nb_process and timeout < self.timeout:
+            timeout += 1
+            sleep(1)
+
+        # S'il y a un doublon ou que le timeout est atteint, on recommence
+        if len(self.numbering_list) != len(set(self.numbering_list)) or timeout == self.timeout:
+            self.numbering_list = []
+            return self.numbering()
+
+        # Sinon on continue
+        self.my_id = self.numbering_list.index(value)
+
+        print("Choosen ID:", self.my_id)
 
 
     def inc_clock(self) -> None:
